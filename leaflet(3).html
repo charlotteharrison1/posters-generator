@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campaign Leaflet</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Extra+Condensed:wght@900&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #888;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Saira Extra Condensed', sans-serif;
+  }
+
+  .poster {
+    width: 920px;
+    height: 1170px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    background: #c8eef4;
+  }
+
+  .top {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 60px 18px;
+  }
+
+  .question {
+    font-size: 96px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #2a7fa8;
+    line-height: 0.97;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  .bottom {
+    padding: 16px 60px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .answer {
+    font-size: 92px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #00BED6;
+    line-height: 0.97;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  .your-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .inline-image-placeholder {
+    width: 84px;
+    height: 84px;
+    border: 3px dashed rgba(0, 190, 214, 0.6);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .inline-image-placeholder span {
+    font-family: 'Special Elite', monospace;
+    font-size: 11px;
+    color: #00BED6;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.4;
+    opacity: 0.7;
+  }
+
+  .source-bar {
+    padding: 14px 40px 18px;
+    width: 100%;
+    margin-top: auto;
+  }
+
+  .source {
+    font-family: 'Special Elite', monospace;
+    font-size: 13px;
+    color: #2a7fa8;
+    text-align: center;
+    opacity: 0.75;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <div class="top">
+    <div class="question">
+      WOULD YOU VOTE<br>FOR SOMEONE<br>WHO...<br>[HEADLINE]
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="answer">
+      <div class="your-row">
+        YOUR
+        <div class="inline-image-placeholder">
+          <span>Image<br>here</span>
+        </div>
+      </div>
+      CANDIDATE FOR<br>
+      [NAME]<br>
+      DID.
+    </div>
+  </div>
+
+  <div class="source-bar">
+    <div class="source">
+      Link: 
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

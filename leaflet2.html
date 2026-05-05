@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campaign Leaflet 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Extra+Condensed:wght@900&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #444;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Saira Extra Condensed', sans-serif;
+  }
+
+  .poster {
+    width: 960px;
+    height: 1190px;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    padding: 55px 55px 38px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── TOP BLOCK ── */
+  .top-text {
+    font-size: 130px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 0.92;
+    letter-spacing: -1px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .top-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    line-height: 0.92;
+  }
+
+  .inline-image-placeholder {
+    width: 118px;
+    height: 118px;
+    border: 3px dashed rgba(255,255,255,0.4);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    top: -4px;
+  }
+
+  .inline-image-placeholder span {
+    font-family: 'Special Elite', monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.4;
+  }
+
+  /* ── SPACER ── */
+  .spacer { flex: 1; }
+
+  /* ── HEADLINE BOX ── */
+  .headline-wrap {
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .headline-box {
+    background: #fff;
+    border: 5px solid #cc2200;
+    padding: 8px 30px;
+    display: inline-block;
+  }
+
+  .headline-box span {
+    font-size: 96px;
+    font-weight: 900;
+    color: #cc2200;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  /* ── BOTTOM QUESTION ── */
+  .bottom-text {
+    font-size: 126px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 0.92;
+    letter-spacing: -1px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .bottom-text .red {
+    color: #cc2200;
+  }
+
+  /* ── SOURCE ── */
+  .source {
+    font-family: 'Special Elite', monospace;
+    font-size: 22px;
+    color: #555;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 18px;
+    /* Left-aligned like original */
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <div class="top-text">
+    <div class="top-row">
+      Your
+      <div class="inline-image-placeholder">
+        <span>Image<br>here</span>
+      </div>
+    </div>
+    candidate for<br>
+    [area]
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="headline-wrap">
+    <div class="headline-box">
+      <span>[headline]</span>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="bottom-text">
+    Will you still <span class="red">vote</span><br>for them?
+  </div>
+
+  <div class="source">source: BBC news</div>
+
+</div>
+</body>
+</html>

@@ -14,9 +14,12 @@ Configuration:
     Edit the SETTINGS block below before running.
 """
 
+import base64
 import csv
 import io
 import json
+import mimetypes
+import os
 import sys
 import requests
 
@@ -25,11 +28,15 @@ import requests
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1njbBYMUmdq0tc_hgz7kTrzzEVsl-aTpDo7ZY8tpEx8A/edit?gid=1437642413#gid=1437642413"
 
 # Column headers (case-insensitive, partial match)
-NAME_COL     = "candidate"
-HEADLINE_COL = "headline"
-LINK_COL     = "url"
+CANDIDATE_COL = "candidate"
+WARD_COL      = "ward"
+HEADLINE_COL  = "headline"
+LINK_COL      = "url"
 
 OUTPUT_FILE  = "posters.html"
+
+# Set to an image URL to show it on every poster; leave blank for the placeholder box
+IMAGE_URL    = "reformImage.png"
 
 # ─── FETCH & PARSE ───────────────────────────────────────────────────────────
 
@@ -43,7 +50,7 @@ def to_csv_url(url):
     gid = gid_m.group(1) if gid_m else '0'
     return f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
 
-def fetch_characters(url, name_col, headline_col, link_col):
+def fetch_characters(url, candidate_col, ward_col, headline_col, link_col):
     csv_url = to_csv_url(url)
     print(f"Fetching sheet as CSV: {csv_url}")
     try:
@@ -56,29 +63,30 @@ def fetch_characters(url, name_col, headline_col, link_col):
     headers = reader.fieldnames or []
     print("Columns found:", [repr(h) for h in headers])
 
-
     def find_col(keyword):
-      for h in headers:
-          cleaned = h.strip().lstrip('\ufeff')  # strip whitespace and BOM
-          if keyword.lower() in cleaned.lower():
-              return h
-      return None
+        for h in headers:
+            cleaned = h.strip().lstrip('\ufeff')
+            if keyword.lower() in cleaned.lower():
+                return h
+        return None
 
-    nc = find_col(name_col)
+    cc = find_col(candidate_col)
+    wc = find_col(ward_col)
     hc = find_col(headline_col)
     lc = find_col(link_col)
 
-    missing = [k for k, v in [(name_col, nc), (headline_col, hc), (link_col, lc)] if v is None]
+    missing = [k for k, v in [(candidate_col, cc), (ward_col, wc), (headline_col, hc), (link_col, lc)] if v is None]
     if missing:
-        sys.exit(f"\nCouldn't find columns matching: {missing}\nEdit the NAME_COL / HEADLINE_COL / LINK_COL settings at the top of this script.")
+        sys.exit(f"\nCouldn't find columns matching: {missing}\nEdit the column settings at the top of this script.")
 
     characters = []
     for row in reader:
-        name     = (row.get(nc) or "").strip()
-        headline = (row.get(hc) or "").strip()
-        link     = (row.get(lc) or "").strip()
-        if name:
-            characters.append({"name": name, "headline": headline, "link": link})
+        candidate = (row.get(cc) or "").strip()
+        ward      = (row.get(wc) or "").strip()
+        headline  = (row.get(hc) or "").strip()
+        link      = (row.get(lc) or "").strip()
+        if candidate:
+            characters.append({"candidate": candidate, "ward": ward, "headline": headline, "link": link})
 
     print(f"Loaded {len(characters)} characters.")
     return characters
@@ -92,11 +100,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wanted Poster Generator</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Special+Elite&display=swap" rel="stylesheet">
+  <title>Campaign Leaflet Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Extra+Condensed:wght@900&family=Special+Elite&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: system-ui, sans-serif;
@@ -105,6 +112,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       min-height: 100vh;
     }
 
+    /* ── Search screen ── */
     #search-screen {
       max-width: 560px;
       margin: 0 auto;
@@ -127,7 +135,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
     #search-input:focus { border-color: #666; }
     #search-input::placeholder { color: #555; }
-
     .result-card {
       padding: 0.75rem 1rem;
       border: 1px solid #2a2a2a; border-radius: 8px;
@@ -144,71 +151,120 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     #overflow-note { color: #666; font-size: 0.8rem; margin-top: 0.5rem; }
     #hint { color: #555; font-size: 0.8rem; margin-top: 0.5rem; }
 
+    /* ── Poster screen ── */
     #poster-screen {
       display: none;
       flex-direction: column;
       align-items: center;
       padding: 2rem 1rem;
       min-height: 100vh;
+      background: #444;
     }
 
     .poster {
-      width: 480px; max-width: 100%;
-      background: radial-gradient(ellipse at center, #f7e9b0 0%, #ecd882 55%, #d9c055 100%);
-      border: 7px double #4a2d0a;
-      padding: 2.5rem 3rem 2.25rem;
-      text-align: center; position: relative;
-      box-shadow: 0 16px 64px rgba(0,0,0,0.6);
+      width: 960px;
+      height: 1190px;
+      max-width: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      padding: 55px 55px 38px;
+      position: relative;
+      overflow: hidden;
     }
-    .poster::before {
-      content: '';
-      position: absolute; inset: 8px;
-      border: 1.5px solid rgba(74,45,10,0.35);
-      pointer-events: none;
-    }
-    .corner { position: absolute; width: 22px; height: 22px; border: 2.5px solid #4a2d0a; }
-    .corner.tl { top:4px; left:4px;  border-right:none; border-bottom:none; }
-    .corner.tr { top:4px; right:4px; border-left:none;  border-bottom:none; }
-    .corner.bl { bottom:4px; left:4px;  border-right:none; border-top:none; }
-    .corner.br { bottom:4px; right:4px; border-left:none;  border-top:none; }
 
-    .poster-wanted {
-      font-family: 'Rye', Georgia, serif;
-      font-size: 72px; color: #1a0d00;
-      letter-spacing: 8px; line-height: 1;
-      text-shadow: 2px 3px 6px rgba(0,0,0,0.2);
-      margin-bottom: 0.25rem;
+    .top-text {
+      font-family: 'Saira Extra Condensed', sans-serif;
+      font-size: 130px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 0.92;
+      letter-spacing: -1px;
+      text-align: center;
+      flex-shrink: 0;
     }
-    .divider { display: flex; align-items: center; margin: 0.6rem 0; }
-    .divider-line { flex: 1; height: 2px; background: #4a2d0a; }
-    .divider-star { color: #4a2d0a; font-size: 14px; margin: 0 10px; }
-    .divider-thin { height: 1px; background: rgba(74,45,10,0.4); margin: 0.6rem 0; }
 
-    .poster-for {
-      font-family: 'Special Elite', Georgia, serif;
-      font-size: 12px; letter-spacing: 5px;
-      color: #4a2d0a; margin: 0.4rem 0;
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      line-height: 0.92;
     }
-    .poster-headline {
-      font-family: 'Special Elite', Georgia, serif;
-      font-size: 15px; font-style: italic;
-      line-height: 1.55; color: #1a0d00;
-      background: rgba(74,45,10,0.07);
-      border: 1px solid rgba(74,45,10,0.3);
-      padding: 0.75rem 1rem; margin: 0.5rem 0 1rem;
+
+    .inline-image-placeholder {
+      width: 118px;
+      height: 118px;
+      border: 3px dashed rgba(255,255,255,0.4);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+      top: -4px;
     }
-    .poster-name {
-      font-family: 'Rye', Georgia, serif;
-      font-size: 34px; color: #1a0d00;
-      letter-spacing: 3px; line-height: 1.25;
-      margin: 0.75rem 0 0.5rem; word-break: break-word;
-      text-shadow: 1px 2px 4px rgba(0,0,0,0.18);
+
+    .inline-image-placeholder span {
+      font-family: 'Special Elite', monospace;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      line-height: 1.4;
     }
-    .poster-link {
-      font-family: 'Special Elite', Georgia, serif;
-      font-size: 10px; color: #5a3a1a;
-      word-break: break-all; letter-spacing: 0.3px;
-      margin-top: 0.75rem; opacity: 0.85; line-height: 1.5;
+
+    .spacer { flex: 1; }
+
+    .headline-wrap {
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .headline-box {
+      background: #fff;
+      border: 5px solid #cc2200;
+      padding: 8px 30px;
+      display: inline-block;
+    }
+
+    .headline-box span {
+      font-family: 'Saira Extra Condensed', sans-serif;
+      font-size: 116px;
+      font-weight: 900;
+      color: #cc2200;
+      letter-spacing: -1px;
+      line-height: 1;
+      text-transform: uppercase;
+      text-align: center;
+      display: block;
+    }
+
+    .bottom-text {
+      font-family: 'Saira Extra Condensed', sans-serif;
+      font-size: 126px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 0.92;
+      letter-spacing: -1px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .bottom-text .red { color: #cc2200; }
+
+    .source {
+      font-family: 'Special Elite', monospace;
+      font-size: 22px;
+      color: #555;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+      margin-top: auto;
+      padding-top: 18px;
+      text-align: left;
+      word-break: break-all;
     }
 
     .poster-buttons {
@@ -217,14 +273,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
     button {
       padding: 0.6rem 1.25rem; border-radius: 7px;
-      border: 1px solid #444; background: #252525;
+      border: 1px solid #666; background: #333;
       color: #eee; font-size: 0.9rem; cursor: pointer;
       transition: background 0.1s;
     }
-    button:hover { background: #333; }
+    button:hover { background: #444; }
 
     @media print {
-      body { background: white; }
+      body, #poster-screen { background: #444; }
       .poster-buttons { display: none; }
       #search-screen { display: none !important; }
       #poster-screen { display: flex !important; }
@@ -234,39 +290,38 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <body>
 
 <div id="search-screen">
-  <h1>Wanted Posters</h1>
-  <p class="subtitle">Search for a character to generate their poster.</p>
+  <h1>Campaign Leaflet Generator</h1>
+  <p class="subtitle">Search for a candidate to generate their leaflet.</p>
   <div class="badge" id="count-badge"></div>
-  <input id="search-input" type="text" placeholder="Type a character name..." autocomplete="off" />
+  <input id="search-input" type="text" placeholder="Type a candidate name..." autocomplete="off" />
   <div id="results"></div>
 </div>
 
 <div id="poster-screen">
   <div class="poster">
-    <div class="corner tl"></div>
-    <div class="corner tr"></div>
-    <div class="corner bl"></div>
-    <div class="corner br"></div>
-    <div class="poster-wanted">WANTED</div>
-    <div class="divider">
-      <div class="divider-line"></div>
-      <span class="divider-star">&#10022;</span>
-      <div class="divider-line"></div>
+    <div class="top-text">
+      <div class="top-row">
+        Your
+        %%IMAGE_HTML%%
+      </div>
+      candidate for<br>
+      <span id="poster-name"></span>
     </div>
-    <div class="poster-for">WANTED FOR</div>
-    <div class="poster-headline" id="poster-headline"></div>
-    <div class="divider-thin"></div>
-    <div class="poster-name" id="poster-name"></div>
-    <div class="divider">
-      <div class="divider-line"></div>
-      <span class="divider-star">&#10022;</span>
-      <div class="divider-line"></div>
+    <div class="spacer"></div>
+    <div class="headline-wrap">
+      <div class="headline-box">
+        <span id="poster-headline"></span>
+      </div>
     </div>
-    <div class="poster-link" id="poster-link"></div>
+    <div class="spacer"></div>
+    <div class="bottom-text">
+      Will you still <span class="red">vote</span> for them?
+    </div>
+    <div class="source">source: <span id="poster-link"></span></div>
   </div>
   <div class="poster-buttons">
     <button onclick="showSearch()">&#8592; Search again</button>
-    <button onclick="window.print()">Print poster</button>
+    <button onclick="window.print()">Print leaflet</button>
   </div>
 </div>
 
@@ -278,7 +333,7 @@ var resultsEl = document.getElementById('results');
 var searchScr = document.getElementById('search-screen');
 var posterScr = document.getElementById('poster-screen');
 
-document.getElementById('count-badge').textContent = CHARACTERS.length + ' characters loaded';
+document.getElementById('count-badge').textContent = CHARACTERS.length + ' candidates loaded';
 
 searchEl.addEventListener('input', function() {
   var q = searchEl.value.trim().toLowerCase();
@@ -290,7 +345,8 @@ searchEl.addEventListener('input', function() {
   }
 
   var matches = CHARACTERS.filter(function(c) {
-    return c.name.toLowerCase().indexOf(q) !== -1;
+    return c.candidate.toLowerCase().indexOf(q) !== -1 ||
+           c.ward.toLowerCase().indexOf(q) !== -1;
   });
 
   if (matches.length === 0) {
@@ -301,7 +357,7 @@ searchEl.addEventListener('input', function() {
   matches.slice(0, 10).forEach(function(c) {
     var div = document.createElement('div');
     div.className = 'result-card';
-    div.innerHTML = '<div class="result-name">'     + escHtml(c.name)     + '</div>' +
+    div.innerHTML = '<div class="result-name">' + escHtml(c.candidate) + ' &mdash; ' + escHtml(c.ward) + '</div>' +
                     '<div class="result-headline">' + escHtml(c.headline) + '</div>';
     div.onclick = (function(char) {
       return function() { showPoster(char); };
@@ -318,7 +374,7 @@ searchEl.addEventListener('input', function() {
 });
 
 function showPoster(c) {
-  document.getElementById('poster-name').textContent     = c.name;
+  document.getElementById('poster-name').textContent     = c.ward;
   document.getElementById('poster-headline').textContent = c.headline;
   document.getElementById('poster-link').textContent     = c.link;
   searchScr.style.display = 'none';
@@ -347,13 +403,29 @@ resultsEl.innerHTML = '<p id="hint">Start typing to search. Partial matches work
 
 # ─── GENERATE ────────────────────────────────────────────────────────────────
 
-def generate(url, name_col, headline_col, link_col, output_file):
-    characters = fetch_characters(url, name_col, headline_col, link_col)
+def resolve_image(image_url):
+    if not image_url:
+        return None
+    if not image_url.startswith("http"):
+        mime = mimetypes.guess_type(image_url)[0] or "image/png"
+        with open(image_url, "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+        return f"data:{mime};base64,{data}"
+    return image_url
+
+def generate(url, candidate_col, ward_col, headline_col, link_col, output_file, image_url=""):
+    characters = fetch_characters(url, candidate_col, ward_col, headline_col, link_col)
     characters_json = json.dumps(characters, ensure_ascii=False, indent=2)
+    src = resolve_image(image_url)
+    if src:
+        image_html = f'<img src="{src}" style="height:80px;width:500px;border-radius:5px;display:block;" />'
+    else:
+        image_html = '<div class="inline-image-placeholder"><span>Image<br>here</span></div>'
     html = HTML_TEMPLATE.replace("%%CHARACTERS_JSON%%", characters_json)
+    html = html.replace("%%IMAGE_HTML%%", image_html)
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"Done! Open {output_file} in your browser.")
 
 if __name__ == "__main__":
-    generate(SHEET_URL, NAME_COL, HEADLINE_COL, LINK_COL, OUTPUT_FILE)
+    generate(SHEET_URL, CANDIDATE_COL, WARD_COL, HEADLINE_COL, LINK_COL, OUTPUT_FILE, IMAGE_URL)
