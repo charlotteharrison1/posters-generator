@@ -243,7 +243,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       text-transform: uppercase;
       text-align: center;
       display: block;
-      white-space: nowrap;
     }
 
     .bottom-text {
@@ -378,12 +377,11 @@ searchEl.addEventListener('input', function() {
 });
 
 function fitHeadline() {
-  var span    = document.getElementById('poster-headline');
-  var poster  = document.querySelector('.poster');
-  var maxWidth = poster.clientWidth - 110 - 70; /* poster padding (55*2) + box padding (30*2) + border (5*2) */
-  var size = 116;
+  var span   = document.getElementById('poster-headline');
+  var poster = document.querySelector('.poster');
+  var size   = 116;
   span.style.fontSize = size + 'px';
-  while (span.scrollWidth > maxWidth && size > 24) {
+  while (poster.scrollHeight > poster.clientHeight && size > 28) {
     size -= 2;
     span.style.fontSize = size + 'px';
   }
