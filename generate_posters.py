@@ -33,7 +33,7 @@ WARD_COL      = "ward"
 HEADLINE_COL  = "headline"
 LINK_COL      = "url"
 
-OUTPUT_FILE  = "posters.html"
+OUTPUT_FILE  = "index.html"
 
 # Set to a local CSV filename to use that instead of fetching from Google Sheets
 LOCAL_CSV    = "cleanlist.csv"
@@ -432,12 +432,29 @@ def load_local_csv(path, candidate_col, ward_col, headline_col, link_col):
     print(f"Loading local CSV: {path}")
     with open(path, encoding="utf-8") as f:
         reader = csv.DictReader(f)
+        headers = reader.fieldnames or []
+
+        def find_col(keyword):
+            for h in headers:
+                if keyword.lower() in h.strip().lower():
+                    return h
+            return None
+
+        cc = find_col(candidate_col)
+        wc = find_col(ward_col)
+        hc = find_col(headline_col)
+        lc = find_col(link_col) or find_col("link") or find_col("url")
+
+        missing = [k for k, v in [(candidate_col, cc), (ward_col, wc), (headline_col, hc), (link_col, lc)] if v is None]
+        if missing:
+            sys.exit(f"\nCouldn't find columns matching: {missing} in {path}")
+
         characters = []
         for row in reader:
-            candidate = (row.get(candidate_col) or "").strip()
-            ward      = (row.get(ward_col) or "").strip()
-            headline  = (row.get(headline_col) or "").strip()
-            link      = (row.get(link_col) or "").strip()
+            candidate = (row.get(cc) or "").strip()
+            ward      = (row.get(wc) or "").strip()
+            headline  = (row.get(hc) or "").strip()
+            link      = (row.get(lc) or "").strip()
             if candidate:
                 characters.append({"candidate": candidate, "ward": ward, "headline": headline, "link": link})
     print(f"Loaded {len(characters)} characters.")
