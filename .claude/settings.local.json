@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(.venv/bin/python generate_posters.py)"
+      "Bash(.venv/bin/python generate_posters.py)",
+      "Bash(.venv/bin/python -)"
     ]
   }
 }

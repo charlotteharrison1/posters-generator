@@ -35,6 +35,9 @@ LINK_COL      = "url"
 
 OUTPUT_FILE  = "posters.html"
 
+# Set to a local CSV filename to use that instead of fetching from Google Sheets
+LOCAL_CSV    = "cleanlist.csv"
+
 # Set to an image URL to show it on every poster; leave blank for the placeholder box
 IMAGE_URL    = "reformImage.png"
 
@@ -373,6 +376,17 @@ searchEl.addEventListener('input', function() {
   }
 });
 
+function fitHeadline() {
+  var span = document.getElementById('poster-headline');
+  var box  = span.parentElement;
+  var size = 116;
+  span.style.fontSize = size + 'px';
+  while (span.scrollWidth > box.clientWidth && size > 24) {
+    size -= 2;
+    span.style.fontSize = size + 'px';
+  }
+}
+
 function showPoster(c) {
   document.getElementById('poster-name').textContent     = c.ward;
   document.getElementById('poster-headline').textContent = c.headline;
@@ -380,6 +394,7 @@ function showPoster(c) {
   searchScr.style.display = 'none';
   posterScr.style.display = 'flex';
   window.scrollTo(0, 0);
+  fitHeadline();
 }
 
 function showSearch() {
@@ -413,8 +428,26 @@ def resolve_image(image_url):
         return f"data:{mime};base64,{data}"
     return image_url
 
-def generate(url, candidate_col, ward_col, headline_col, link_col, output_file, image_url=""):
-    characters = fetch_characters(url, candidate_col, ward_col, headline_col, link_col)
+def load_local_csv(path, candidate_col, ward_col, headline_col, link_col):
+    print(f"Loading local CSV: {path}")
+    with open(path, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        characters = []
+        for row in reader:
+            candidate = (row.get(candidate_col) or "").strip()
+            ward      = (row.get(ward_col) or "").strip()
+            headline  = (row.get(headline_col) or "").strip()
+            link      = (row.get(link_col) or "").strip()
+            if candidate:
+                characters.append({"candidate": candidate, "ward": ward, "headline": headline, "link": link})
+    print(f"Loaded {len(characters)} characters.")
+    return characters
+
+def generate(url, candidate_col, ward_col, headline_col, link_col, output_file, image_url="", local_csv=""):
+    if local_csv:
+        characters = load_local_csv(local_csv, candidate_col, ward_col, headline_col, link_col)
+    else:
+        characters = fetch_characters(url, candidate_col, ward_col, headline_col, link_col)
     characters_json = json.dumps(characters, ensure_ascii=False, indent=2)
     src = resolve_image(image_url)
     if src:
@@ -428,4 +461,4 @@ def generate(url, candidate_col, ward_col, headline_col, link_col, output_file, 
     print(f"Done! Open {output_file} in your browser.")
 
 if __name__ == "__main__":
-    generate(SHEET_URL, CANDIDATE_COL, WARD_COL, HEADLINE_COL, LINK_COL, OUTPUT_FILE, IMAGE_URL)
+    generate(SHEET_URL, CANDIDATE_COL, WARD_COL, HEADLINE_COL, LINK_COL, OUTPUT_FILE, IMAGE_URL, LOCAL_CSV)
